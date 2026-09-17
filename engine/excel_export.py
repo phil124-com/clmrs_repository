@@ -215,25 +215,26 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
     r = _write_table(ws, sheets["hh_school"]["education"], r, "HHEducation", freeze=False)
 
     # ---------------------------------------------------------------- Inspection
-    ws = wb.create_sheet("Insp - Farmers & Children")
-    r = _title_block(ws, "Inspection \u2014 Unique Farmers & Children Inspected (On Annex List)",
-                      "Same unique-ID methodology as Household, applied to Inspection records. Farmers/children not on the Annex list are on the \"Insp - Not on List\" tab.", width=10)
-    ws.cell(row=r, column=1, value="Farmers Inspected, by Quarter").font = Font(bold=True, size=11)
-    r += 1
-    r = _write_table(ws, sheets["insp_farmer_on_list"], r, "InspFarmers", freeze=False)
-    ws.cell(row=r, column=1, value="Children Inspected").font = Font(bold=True, size=11)
-    r += 1
-    r = _write_table(ws, sheets["insp_child_on_list"], r, "InspChildren", freeze=False)
-    r += 1
-    ws.cell(row=r, column=1, value="Children Inspected by Gender, by Quarter").font = Font(bold=True, size=11)
-    r += 1
-    r = _write_table(ws, sheets["insp_child_gender"], r, "InspChildGender", freeze=False)
+    ws = wb.create_sheet("Insp - Farmers by Quarter")
+    r = _title_block(ws, "Inspection \u2014 Unique Farmers Inspected, by Quarter (On Annex List)",
+                      "One row per unique farmer (Farmer ID) matching the Annex farmer list, inspected during the period covered. Same unique-ID methodology as Household.",
+                      "Farmers NOT on the Annex list are on the \"Insp - Not on List\" tab.", width=10)
+    r = _write_table(ws, sheets["insp_farmer_on_list"], r, "InspFarmersOnList")
     ws.cell(row=r, column=1, value="Farmers Inspected by Gender (from Farmer List / Annex)").font = Font(bold=True, size=11)
     r += 1
     r = _write_table(ws, sheets["insp_farmer_gender"], r, "InspFarmerGender", freeze=False)
     ws.cell(row=r, column=1, value="Records by Enumerator Gender").font = Font(bold=True, size=11)
     r += 1
     r = _write_table(ws, sheets["insp_enum_gender"], r, "InspEnumGender", freeze=False)
+
+    ws = wb.create_sheet("Insp - Children Detail")
+    r = _title_block(ws, "Inspection \u2014 Unique Children Inspected (On Annex List)",
+                      "One row per unique child (Child ID) whose farmer matches the Annex farmer list, combining raw survey fields with CLMRS status, gender, and school attendance.",
+                      "Children whose farmer is not on the Annex list are on the \"Insp - Not on List\" tab.", width=11)
+    r = _write_table(ws, sheets["insp_child_on_list"], r, "InspChildrenOnList")
+    ws.cell(row=r, column=1, value="Children Inspected by Gender, by Quarter").font = Font(bold=True, size=11)
+    r += 1
+    r = _write_table(ws, sheets["insp_child_gender"], r, "InspChildGender", freeze=False)
 
     ws = wb.create_sheet("Insp - Not on List")
     r = _title_block(ws, "Inspection \u2014 Farmers & Children NOT on the Annex List", width=10)
