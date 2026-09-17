@@ -64,15 +64,24 @@ class CLMRSApp(tk.Tk):
         files_frame = tk.LabelFrame(body, text="Data Import", padx=12, pady=12, font=("Segoe UI", 10, "bold"))
         files_frame.pack(fill="x", pady=(0, 12))
 
+        file_hints = {
+            "Farmer List": "required",
+            "Household": "optional \u2014 upload if you have it",
+            "Inspection": "optional \u2014 upload if you have it",
+            "Follow Up": "optional \u2014 upload if you have it",
+        }
         self.file_labels = {}
         for slot in FILE_SLOTS:
             row = tk.Frame(files_frame)
             row.pack(fill="x", pady=4)
             tk.Label(row, text=slot, width=14, anchor="w", font=("Segoe UI", 10)).pack(side="left")
-            status = tk.Label(row, text="Not loaded", fg="#a33", width=46, anchor="w", font=("Segoe UI", 9))
+            status = tk.Label(row, text=f"Not loaded ({file_hints[slot]})", fg="#a33", width=46, anchor="w", font=("Segoe UI", 9))
             status.pack(side="left", padx=8)
             self.file_labels[slot] = status
             tk.Button(row, text="Browse...", command=lambda s=slot: self._browse(s)).pack(side="left")
+        tk.Label(files_frame,
+                 text="You only need the Farmer List plus at least one of Household / Inspection / Follow Up \u2014 run analysis on whatever you have; add the rest later and re-run.",
+                 font=("Segoe UI", 8, "italic"), fg="#666", wraplength=760, justify="left").pack(anchor="w", pady=(6, 0))
 
         # Action buttons
         actions = tk.Frame(body)
@@ -130,21 +139,32 @@ class CLMRSApp(tk.Tk):
             self.file_paths[slot] = path
             self.file_labels[slot].configure(text=f"\u2713 {os.path.basename(path)}", fg="#080")
 
-    def _validate(self):
-        missing = [s for s, p in self.file_paths.items() if not p]
-        if missing:
-            messagebox.showwarning(APP_TITLE, "Missing files:\n" + "\n".join(missing))
-            return
+    def _check_required_files(self):
+        """Farmer List is required; at least one of Household/Inspection/Follow
+        Up is required; the other two are optional. Returns an error message
+        string, or None if the selection is valid."""
+        if not self.file_paths.get("Farmer List"):
+            return "Please upload the Farmer List \u2014 it's required."
+        others = ["Household", "Inspection", "Follow Up"]
+        if not any(self.file_paths.get(s) for s in others):
+            return "Please upload at least one of Household, Inspection, or Follow Up."
         for slot, p in self.file_paths.items():
-            if not os.path.exists(p):
-                messagebox.showerror(APP_TITLE, f"{slot} file no longer exists:\n{p}")
-                return
-        messagebox.showinfo(APP_TITLE, "All four files are present. Ready to run analysis.")
+            if p and not os.path.exists(p):
+                return f"{slot} file no longer exists:\n{p}"
+        return None
+
+    def _validate(self):
+        error = self._check_required_files()
+        if error:
+            messagebox.showwarning(APP_TITLE, error)
+            return
+        loaded = [s for s in FILE_SLOTS if self.file_paths.get(s)]
+        messagebox.showinfo(APP_TITLE, f"Ready to run analysis with: {', '.join(loaded)}.")
 
     def _run_analysis(self):
-        missing = [s for s, p in self.file_paths.items() if not p]
-        if missing:
-            messagebox.showwarning(APP_TITLE, "Please upload all four files first:\n" + "\n".join(missing))
+        error = self._check_required_files()
+        if error:
+            messagebox.showwarning(APP_TITLE, error)
             return
 
         self.run_btn.configure(state="disabled")
@@ -158,9 +178,9 @@ class CLMRSApp(tk.Tk):
                 result = run_complete_analysis(
                     self.programme_cfg,
                     farmer_list_path=self.file_paths["Farmer List"],
-                    household_path=self.file_paths["Household"],
-                    inspection_path=self.file_paths["Inspection"],
-                    follow_up_path=self.file_paths["Follow Up"],
+                    household_path=self.file_paths.get("Household"),
+                    inspection_path=self.file_paths.get("Inspection"),
+                    follow_up_path=self.file_paths.get("Follow Up"),
                     progress_cb=lambda msg: self.after(0, self._log, msg),
                 )
                 self.after(0, self._on_analysis_done, result)

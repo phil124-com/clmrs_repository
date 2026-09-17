@@ -32,7 +32,7 @@ def _fmt_date(d):
     return d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else d
 
 
-def _write_table(ws, df: pd.DataFrame, start_row: int, table_name: str) -> int:
+def _write_table(ws, df: pd.DataFrame, start_row: int, table_name: str, freeze: bool = True) -> int:
     if df is None or df.empty:
         ws.cell(row=start_row, column=1, value="(no records)").font = BODY_FONT
         return start_row + 2
@@ -62,7 +62,7 @@ def _write_table(ws, df: pd.DataFrame, start_row: int, table_name: str) -> int:
         max_len = max([len(str(col))] + [len(str(s)) for s in sample])
         ws.column_dimensions[get_column_letter(j)].width = min(max(max_len + 2, 10), 50)
 
-    ws.freeze_panes = ws.cell(row=start_row + 1, column=1)
+    ws.freeze_panes = ws.cell(row=start_row + 1, column=1) if freeze else None
 
     safe_name = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in table_name)[:30]
     ref = f"{get_column_letter(1)}{start_row}:{get_column_letter(last_col)}{last_row}"
@@ -143,12 +143,12 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
         ws.cell(row=r, column=1,
                 value="A single overall percentage can hide big differences between groups \u2014 shown here so a low match rate isn't missed at just one group.").font = NOTE_FONT
         r += 1
-        r = _write_table(ws, sheets["hh_match_by_group"], r, "MatchByGroupHH")
+        r = _write_table(ws, sheets["hh_match_by_group"], r, "MatchByGroupHH", freeze=False)
 
     if not sheets.get("insp_match_by_group", pd.DataFrame()).empty:
         ws.cell(row=r, column=1, value="Farmer List (Annex) Match Rate by Farmer Group \u2014 Inspection").font = Font(bold=True, size=11)
         r += 1
-        r = _write_table(ws, sheets["insp_match_by_group"], r, "MatchByGroupInsp")
+        r = _write_table(ws, sheets["insp_match_by_group"], r, "MatchByGroupInsp", freeze=False)
 
     if warnings:
         ws.cell(row=r, column=1, value="Data Load Warnings").font = Font(bold=True, size=11)
@@ -176,10 +176,10 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
                       width=10)
     ws.cell(row=r, column=1, value="Farmers Not on List").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_farmer_not_on_list"], r, "HHFarmersOffList")
+    r = _write_table(ws, sheets["hh_farmer_not_on_list"], r, "HHFarmersOffList", freeze=False)
     ws.cell(row=r, column=1, value="Children Not on List").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_child_not_on_list"], r, "HHChildrenOffList")
+    r = _write_table(ws, sheets["hh_child_not_on_list"], r, "HHChildrenOffList", freeze=False)
 
     ws = wb.create_sheet("HH - Quarterly & Status")
     r = _title_block(ws, "Household \u2014 Quarterly, Status, Gender & School Summary (Annex-Matched Only)",
@@ -187,32 +187,32 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
     hh_q = sheets["hh_quarterly"]
     ws.cell(row=r, column=1, value="Unique Farmers & Children Profiled, by Quarter").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, hh_q["summary"], r, "HHQuarterly")
+    r = _write_table(ws, hh_q["summary"], r, "HHQuarterly", freeze=False)
     ws.cell(row=r, column=1,
             value=f"Farmers with a repeat visit in a later quarter (still counted once, in their first quarter): {hh_q['repeat_visit_farmers']}").font = NOTE_FONT
     r += 2
     ws.cell(row=r, column=1, value="CLMRS Case Status, by Quarter").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_status"]["pivot"], r, "HHStatus")
+    r = _write_table(ws, sheets["hh_status"]["pivot"], r, "HHStatus", freeze=False)
     ws.cell(row=r, column=1,
             value=f"Farmer households with no child under 18 (Annex-matched, all quarters): {sheets['hh_status']['no_child_farmers']}").font = NOTE_FONT
     r += 2
     ws.cell(row=r, column=1, value="Children by Gender, by Quarter").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_child_gender"], r, "HHChildGender")
+    r = _write_table(ws, sheets["hh_child_gender"], r, "HHChildGender", freeze=False)
     ws.cell(row=r, column=1, value="Farmers by Gender (from Farmer List / Annex)").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_farmer_gender"], r, "HHFarmerGender")
+    r = _write_table(ws, sheets["hh_farmer_gender"], r, "HHFarmerGender", freeze=False)
     ws.cell(row=r, column=1, value="Records by Enumerator Gender").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_enum_gender"], r, "HHEnumGender")
+    r = _write_table(ws, sheets["hh_enum_gender"], r, "HHEnumGender", freeze=False)
     r += 1
     ws.cell(row=r, column=1, value="School Attendance, by Quarter").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_school"]["attendance"], r, "HHSchool")
+    r = _write_table(ws, sheets["hh_school"]["attendance"], r, "HHSchool", freeze=False)
     ws.cell(row=r, column=1, value="Current Education Level (all quarters)").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_school"]["education"], r, "HHEducation")
+    r = _write_table(ws, sheets["hh_school"]["education"], r, "HHEducation", freeze=False)
 
     # ---------------------------------------------------------------- Inspection
     ws = wb.create_sheet("Insp - Farmers & Children")
@@ -220,39 +220,39 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
                       "Same unique-ID methodology as Household, applied to Inspection records. Farmers/children not on the Annex list are on the \"Insp - Not on List\" tab.", width=10)
     ws.cell(row=r, column=1, value="Farmers Inspected, by Quarter").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["insp_farmer_on_list"], r, "InspFarmers")
+    r = _write_table(ws, sheets["insp_farmer_on_list"], r, "InspFarmers", freeze=False)
     ws.cell(row=r, column=1, value="Children Inspected").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["insp_child_on_list"], r, "InspChildren")
+    r = _write_table(ws, sheets["insp_child_on_list"], r, "InspChildren", freeze=False)
     r += 1
     ws.cell(row=r, column=1, value="Children Inspected by Gender, by Quarter").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["insp_child_gender"], r, "InspChildGender")
+    r = _write_table(ws, sheets["insp_child_gender"], r, "InspChildGender", freeze=False)
     ws.cell(row=r, column=1, value="Farmers Inspected by Gender (from Farmer List / Annex)").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["insp_farmer_gender"], r, "InspFarmerGender")
+    r = _write_table(ws, sheets["insp_farmer_gender"], r, "InspFarmerGender", freeze=False)
     ws.cell(row=r, column=1, value="Records by Enumerator Gender").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["insp_enum_gender"], r, "InspEnumGender")
+    r = _write_table(ws, sheets["insp_enum_gender"], r, "InspEnumGender", freeze=False)
 
     ws = wb.create_sheet("Insp - Not on List")
     r = _title_block(ws, "Inspection \u2014 Farmers & Children NOT on the Annex List", width=10)
     ws.cell(row=r, column=1, value="Farmers Not on List").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["insp_farmer_not_on_list"], r, "InspFarmersOff")
+    r = _write_table(ws, sheets["insp_farmer_not_on_list"], r, "InspFarmersOff", freeze=False)
     ws.cell(row=r, column=1, value="Children Not on List").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["insp_child_not_on_list"], r, "InspChildrenOff")
+    r = _write_table(ws, sheets["insp_child_not_on_list"], r, "InspChildrenOff", freeze=False)
 
     ws = wb.create_sheet("HH vs Inspection")
     r = _title_block(ws, "Household vs Inspection \u2014 Monitoring Coverage",
                       "Classifies every unique farmer/child as profiled-and-inspected, profiled-but-not-inspected, or inspected-but-not-profiled, to surface monitoring coverage gaps.", width=4)
     ws.cell(row=r, column=1, value="Farmers").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_vs_insp"]["farmers"], r, "HHvsInspFarmers")
+    r = _write_table(ws, sheets["hh_vs_insp"]["farmers"], r, "HHvsInspFarmers", freeze=False)
     ws.cell(row=r, column=1, value="Children").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["hh_vs_insp"]["children"], r, "HHvsInspChildren")
+    r = _write_table(ws, sheets["hh_vs_insp"]["children"], r, "HHvsInspChildren", freeze=False)
 
     # ---------------------------------------------------------------- Follow Up
     ws = wb.create_sheet("Follow Up Cases")
@@ -261,10 +261,10 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
                       "Case Identified Date = Follow Up Date minus 3 calendar months (Pass/Fail) or minus 6 calendar months (Fully Remediated).", width=10)
     ws.cell(row=r, column=1, value="Case Status Summary").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["fu_summary"], r, "FUSummary")
+    r = _write_table(ws, sheets["fu_summary"], r, "FUSummary", freeze=False)
     ws.cell(row=r, column=1, value="Case Detail").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["fu_cases"], r, "FUCases")
+    r = _write_table(ws, sheets["fu_cases"], r, "FUCases", freeze=False)
 
     ws = wb.create_sheet("FU - Multi-Visit Timeline")
     r = _title_block(ws, "Follow Up \u2014 Multi-Visit Timeline",
@@ -272,10 +272,10 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
                       "The event log below lists every individual visit; the summary above condenses it to one row per child.", width=9)
     ws.cell(row=r, column=1, value="Per-Child Summary").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["fu_timeline_summary"], r, "FUTimelineSummary")
+    r = _write_table(ws, sheets["fu_timeline_summary"], r, "FUTimelineSummary", freeze=False)
     ws.cell(row=r, column=1, value="Visit-Level Event Log").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["fu_timeline_events"], r, "FUTimelineEvents")
+    r = _write_table(ws, sheets["fu_timeline_events"], r, "FUTimelineEvents", freeze=False)
 
     ws = wb.create_sheet("Follow Up Alerts")
     r = _title_block(ws, "Follow Up Alerts \u2014 Next Visit Due",
@@ -288,10 +288,10 @@ def build_report(sheets: dict, exec_summary: dict, warnings: list, programme_nam
                       "Every farmer flagged as having no child under 18, from BOTH the Household and Inspection datasets, checked against the Annex farmer list. A farmer visited under both datasets appears once per source below.", width=7)
     ws.cell(row=r, column=1, value="Unique Farmer Summary").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["no_children_combined_summary"], r, "NoChildrenSummary")
+    r = _write_table(ws, sheets["no_children_combined_summary"], r, "NoChildrenSummary", freeze=False)
     ws.cell(row=r, column=1, value="Detail").font = Font(bold=True, size=11)
     r += 1
-    r = _write_table(ws, sheets["no_children_combined_detail"], r, "NoChildrenDetail")
+    r = _write_table(ws, sheets["no_children_combined_detail"], r, "NoChildrenDetail", freeze=False)
 
     # ---------------------------------------------------------------- Enumerator & Data Quality
     ws = wb.create_sheet("Enumerator Analysis")

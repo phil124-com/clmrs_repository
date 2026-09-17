@@ -14,6 +14,16 @@ import pandas as pd
 from .data_loader import load_survey_file, load_farmer_list
 from .quarters import add_quarter_column
 from . import analysis as A
+from config.programmes import CORE_SURVEY_FIELDS
+
+
+def _empty_survey_df() -> pd.DataFrame:
+    """A placeholder for a dataset the user didn't provide. Has every column
+    a real loaded file would have (all empty) so downstream analysis code
+    that references specific columns doesn't crash on a missing dataset —
+    it just produces empty results for that section."""
+    cols = CORE_SURVEY_FIELDS + ["SOURCE_FILE", "SOURCE_ROW", "QUARTER"]
+    return pd.DataFrame(columns=cols)
 
 
 class AnalysisResult:
@@ -24,9 +34,13 @@ class AnalysisResult:
         self.meta = {}
 
 
-def run_complete_analysis(programme_cfg, farmer_list_path: str, household_path: str,
-                           inspection_path: str, follow_up_path: str,
+def run_complete_analysis(programme_cfg, farmer_list_path: str, household_path: str = None,
+                           inspection_path: str = None, follow_up_path: str = None,
                            progress_cb=None) -> AnalysisResult:
+    """Only farmer_list_path is required. household_path / inspection_path /
+    follow_up_path are each optional — pass None (or omit) for any dataset
+    you don't have yet; that section of the report will just come back
+    empty rather than blocking the whole analysis."""
     def report(msg):
         if progress_cb:
             progress_cb(msg)
@@ -44,25 +58,34 @@ def run_complete_analysis(programme_cfg, farmer_list_path: str, household_path: 
         farmer_gender_map = dict(zip(fl_gender["FARMER_ID"], genders))
 
     report("Loading Household data...")
-    hh_r = load_survey_file(household_path, "household", programme_cfg.survey_header_map)
-    result.warnings += [f"[Household] {w}" for w in hh_r.warnings]
-    hh = hh_r.df
-    if "SURVEY_DATE" in hh.columns:
-        add_quarter_column(hh, "SURVEY_DATE", programme_cfg.quarter_map)
+    if household_path:
+        hh_r = load_survey_file(household_path, "household", programme_cfg.survey_header_map)
+        result.warnings += [f"[Household] {w}" for w in hh_r.warnings]
+        hh = hh_r.df
+        if "SURVEY_DATE" in hh.columns:
+            add_quarter_column(hh, "SURVEY_DATE", programme_cfg.quarter_map)
+    else:
+        hh = _empty_survey_df()
 
     report("Loading Inspection data...")
-    insp_r = load_survey_file(inspection_path, "inspection", programme_cfg.survey_header_map)
-    result.warnings += [f"[Inspection] {w}" for w in insp_r.warnings]
-    insp = insp_r.df
-    if "SURVEY_DATE" in insp.columns:
-        add_quarter_column(insp, "SURVEY_DATE", programme_cfg.quarter_map)
+    if inspection_path:
+        insp_r = load_survey_file(inspection_path, "inspection", programme_cfg.survey_header_map)
+        result.warnings += [f"[Inspection] {w}" for w in insp_r.warnings]
+        insp = insp_r.df
+        if "SURVEY_DATE" in insp.columns:
+            add_quarter_column(insp, "SURVEY_DATE", programme_cfg.quarter_map)
+    else:
+        insp = _empty_survey_df()
 
     report("Loading Follow Up data...")
-    fu_r = load_survey_file(follow_up_path, "follow_up", programme_cfg.survey_header_map)
-    result.warnings += [f"[Follow Up] {w}" for w in fu_r.warnings]
-    fu = fu_r.df
-    if "SURVEY_DATE" in fu.columns:
-        add_quarter_column(fu, "SURVEY_DATE", programme_cfg.quarter_map)
+    if follow_up_path:
+        fu_r = load_survey_file(follow_up_path, "follow_up", programme_cfg.survey_header_map)
+        result.warnings += [f"[Follow Up] {w}" for w in fu_r.warnings]
+        fu = fu_r.df
+        if "SURVEY_DATE" in fu.columns:
+            add_quarter_column(fu, "SURVEY_DATE", programme_cfg.quarter_map)
+    else:
+        fu = _empty_survey_df()
 
     report("Checking data quality...")
     dq = A.data_quality_checks(hh, insp, fu, farmer_list_ids,
